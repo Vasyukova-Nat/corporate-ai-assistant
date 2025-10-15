@@ -10,6 +10,7 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 import chromadb
 
 from .simple_ingest_helper import SimpleIngestionHelper
+# from .components.ingest.ingest_helper import IngestionHelper
 
 logger = logging.getLogger(__name__)
 

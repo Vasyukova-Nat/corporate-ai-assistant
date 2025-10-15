@@ -6,6 +6,7 @@ import requests
 import os
 import uuid
 from rag_system.rag_service import RAGService
+# from rag_system.simple_rag_service import SimpleRAGService as RAGService
 
 app = FastAPI(title="Corporate AI Assistant API")
 
