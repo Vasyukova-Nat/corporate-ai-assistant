@@ -7,8 +7,6 @@ from llama_index.core import SimpleDirectoryReader
 logger = logging.getLogger(__name__)
 
 class SimpleIngestionHelper:
-    """Упрощенная версия IngestionHelper из PrivateGPT"""
-    
     @staticmethod
     def transform_file_into_documents(file_name: str, file_data: Path) -> List[Document]:
         """Преобразует файл в документы - упрощенная версия"""

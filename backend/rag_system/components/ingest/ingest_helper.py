@@ -8,23 +8,22 @@ from llama_index.core.schema import Document
 
 logger = logging.getLogger(__name__)
 
-
 # Inspired by the `llama_index.core.readers.file.base` module
 def _try_loading_included_file_formats() -> dict[str, type[BaseReader]]:
     try:
-        from llama_index.readers.file.docs import (  # type: ignore
+        from llama_index.readers.file.docs import (  
             DocxReader,
             HWPReader,
             PDFReader,
         )
-        from llama_index.readers.file.epub import EpubReader  # type: ignore
-        from llama_index.readers.file.image import ImageReader  # type: ignore
-        from llama_index.readers.file.ipynb import IPYNBReader  # type: ignore
-        from llama_index.readers.file.markdown import MarkdownReader  # type: ignore
-        from llama_index.readers.file.mbox import MboxReader  # type: ignore
-        from llama_index.readers.file.slides import PptxReader  # type: ignore
-        from llama_index.readers.file.tabular import PandasCSVReader  # type: ignore
-        from llama_index.readers.file.video_audio import (  # type: ignore
+        from llama_index.readers.file.epub import EpubReader  
+        from llama_index.readers.file.image import ImageReader  
+        from llama_index.readers.file.ipynb import IPYNBReader  
+        from llama_index.readers.file.markdown import MarkdownReader  
+        from llama_index.readers.file.mbox import MboxReader  
+        from llama_index.readers.file.slides import PptxReader  
+        from llama_index.readers.file.tabular import PandasCSVReader  
+        from llama_index.readers.file.video_audio import (  
             VideoAudioReader,
         )
     except ImportError as e:
@@ -105,7 +104,6 @@ class IngestionHelper:
         logger.debug("Excluding metadata from count=%s documents", len(documents))
         for document in documents:
             document.metadata["doc_id"] = document.doc_id
-            # We don't want the Embeddings search to receive this metadata
+            # We don't want the Embeddings search (and LLM) to receive these metadata
             document.excluded_embed_metadata_keys = ["doc_id"]
-            # We don't want the LLM to receive these metadata in the context
             document.excluded_llm_metadata_keys = ["file_name", "doc_id", "page_label"]

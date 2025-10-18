@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
@@ -6,7 +6,6 @@ import requests
 import os
 import uuid
 from rag_system.rag_service import RAGService
-# from rag_system.simple_rag_service import SimpleRAGService as RAGService
 
 app = FastAPI(title="Corporate AI Assistant API")
 

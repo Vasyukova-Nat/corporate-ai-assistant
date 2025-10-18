@@ -1,12 +1,8 @@
-import os
-from pathlib import Path
-from typing import List, Dict
+from typing import Dict
 import ollama
 from .simple_ingest_component import SimpleIngestComponent
 
 class RAGService:
-    """Основной RAG сервис для работы с документами"""
-    
     def __init__(self, data_dir: str = "./data"):
         self.ingest_component = SimpleIngestComponent(persist_dir=data_dir)
         self.model = "llama3.1:8b"
