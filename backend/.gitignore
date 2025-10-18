@@ -1,8 +1,103 @@
-# Ignore Python cache directories
+data/
+user_docs/
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Ignore virtual environment
+# Virtual environments
 venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Data files
+backend/data/
+backend/temp_documents/
+backend/local_data/
+backend/models/
+backend/tiktoken_cache/
+
+# Environment variables
+.env
+.env.local
+.env.prod
+
+# Ollama models (кэш моделей)
+backend/models/
+
+# ChromaDB data
+backend/chroma_db/
+backend/vector_store/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Jupyter
+.ipynb_checkpoints
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
+*.db
+*.sqlite3
+
+# Backups
+*.bak
+*.backup
+
+# Large files
+*.pdf
+*.docx
+*.zip
+*.rar
+*.7z
+
+# PrivateGPT legacy
+private-gpt/
+backend-template/
