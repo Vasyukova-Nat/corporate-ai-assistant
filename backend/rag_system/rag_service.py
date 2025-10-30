@@ -5,7 +5,9 @@ from .simple_ingest_component import SimpleIngestComponent
 class RAGService:
     def __init__(self, data_dir: str = "./data"):
         self.ingest_component = SimpleIngestComponent(persist_dir=data_dir)
-        self.model = "llama3.1:8b"
+        # self.model = "llama3.1:8b"
+        # self.model = "llama3.2:1b"
+        self.model = "qwen2.5:0.5b"
     
     def add_document(self, file_path: str) -> Dict:
         """Добавить документ в базу знаний"""

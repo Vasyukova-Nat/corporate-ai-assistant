@@ -303,10 +303,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         
         <Box sx={{ p: 2 }}>
           <Typography variant="caption" display="block" fontSize="0.7rem" color="rgba(255,255,255,0.8)">
-            Ситникова Дарья БВТ2303
+            Ситникова Дарья, БВТ2303
           </Typography>
           <Typography variant="caption" display="block" fontSize="0.7rem" color="rgba(255,255,255,0.8)">
-            Васькова Наталья БВТ2303
+            Васюкова Наталья, БВТ2303
           </Typography>
         </Box>
       </Box>
