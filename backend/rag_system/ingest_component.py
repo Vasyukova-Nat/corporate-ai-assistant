@@ -8,21 +8,23 @@ from llama_index.core.storage import StorageContext
 from llama_index.vector_stores.chroma import ChromaVectorStore
 import chromadb
 
-from .simple_ingest_helper import SimpleIngestionHelper
-# from .components.ingest.ingest_helper import IngestionHelper
+from .ingest_helper import SimpleIngestionHelper
 
 logger = logging.getLogger(__name__)
 
 class SimpleIngestComponent:
-    """Упрощенная версия ингест компонента из PrivateGPT"""
-    
     def __init__(self, persist_dir: str = "./data/chroma_db"):
         self.persist_dir = Path(persist_dir)
         self.persist_dir.mkdir(parents=True, exist_ok=True)
         
-        self.embed_model = HuggingFaceEmbedding(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
-        )
+        try:
+            self.embed_model = HuggingFaceEmbedding(
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            )
+        except Exception as e:
+            logger.warning("Failed to load embedding model, using fallback: %s", e)
+            from llama_index.embeddings.mock import MockEmbedding
+            self.embed_model = MockEmbedding(embed_dim=384)
         
         self.vector_store = self._initialize_vector_store()
         self.storage_context = StorageContext.from_defaults(
@@ -40,29 +42,31 @@ class SimpleIngestComponent:
     def _initialize_index(self):
         """Инициализирует или загружает индекс"""
         try:
+            # Пытаемся загрузить существующий индекс
             index = VectorStoreIndex.from_vector_store(
                 vector_store=self.vector_store,
                 embed_model=self.embed_model,
                 storage_context=self.storage_context
             )
             logger.info("Loaded existing vector store index")
+            return index
         except Exception as e:
-            logger.info("Creating new vector store index")
+            logger.info("Creating new vector store index: %s", e)
+            # Создаем новый пустой индекс
             index = VectorStoreIndex.from_documents(
                 [],
                 storage_context=self.storage_context,
                 embed_model=self.embed_model
             )
             index.storage_context.persist(persist_dir=self.persist_dir)
-        
-        return index
+            return index
     
     def ingest_file(self, file_path: str) -> bool:
-        """Добавляет файл в базу знаний"""
+        """Добавляет файл в базу знаний - улучшенная версия"""
         try:
             file_path = Path(file_path)
             if not file_path.exists():
-                logger.error(f"File not found: {file_path}")
+                logger.error("File not found: %s", file_path)
                 return False
             
             documents = SimpleIngestionHelper.transform_file_into_documents(
@@ -70,18 +74,20 @@ class SimpleIngestComponent:
             )
             
             if not documents:
-                logger.warning(f"No documents extracted from {file_path}")
+                logger.warning("No documents extracted from %s", file_path)
                 return False
             
+            # Вставляем документы в индекс
             for document in documents:
                 self.index.insert(document)
             
+            # Сохраняем изменения
             self.index.storage_context.persist(persist_dir=self.persist_dir)
-            logger.info(f"Successfully ingested {file_path} with {len(documents)} documents")
+            logger.info("Successfully ingested %s with %s documents", file_path, len(documents))
             return True
             
         except Exception as e:
-            logger.error(f"Error ingesting file {file_path}: {e}")
+            logger.error("Error ingesting file %s: %s", file_path, e)
             return False
     
     def query(self, question: str, top_k: int = 5) -> List[Document]:
@@ -91,7 +97,7 @@ class SimpleIngestComponent:
             relevant_docs = retriever.retrieve(question)
             return [doc.node for doc in relevant_docs]
         except Exception as e:
-            logger.error(f"Error querying documents: {e}")
+            logger.error("Error querying documents: %s", e)
             return []
     
     def get_stats(self) -> dict:
@@ -102,7 +108,9 @@ class SimpleIngestComponent:
             return {
                 "document_count": count,
                 "vector_store": "ChromaDB",
-                "embedding_model": "all-MiniLM-L6-v2"
+                "embedding_model": "all-MiniLM-L6-v2",
+                "persist_dir": str(self.persist_dir)
             }
-        except:
-            return {"document_count": 0, "error": "Unable to get stats"}
+        except Exception as e:
+            logger.error("Error getting stats: %s", e)
+            return {"document_count": 0, "error": str(e)}

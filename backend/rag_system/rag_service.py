@@ -1,6 +1,6 @@
 from typing import Dict
 import ollama
-from .simple_ingest_component import SimpleIngestComponent
+from .ingest_component import SimpleIngestComponent
 from typing import Generator, Dict
 
 class RAGService:
