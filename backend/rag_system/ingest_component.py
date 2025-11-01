@@ -9,11 +9,11 @@ from llama_index.core.storage import StorageContext
 from llama_index.vector_stores.chroma import ChromaVectorStore
 import chromadb
 
-from .ingest_helper import SimpleIngestionHelper
+from .ingest_helper import IngestionHelper
 
 logger = logging.getLogger(__name__)
 
-class SimpleIngestComponent:
+class IngestComponent:
     def __init__(self, persist_dir: str = "./data/chroma_db", max_retries: int = 3):
         self.persist_dir = Path(persist_dir)
         self.persist_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +83,7 @@ class SimpleIngestComponent:
         
         for attempt in range(self.max_retries):
             try:
-                documents = SimpleIngestionHelper.transform_file_into_documents(
+                documents = IngestionHelper.transform_file_into_documents(
                     file_path.name, file_path
                 )
                 

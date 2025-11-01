@@ -1,11 +1,11 @@
 from typing import Dict
 import ollama
-from .ingest_component import SimpleIngestComponent
+from .ingest_component import IngestComponent
 from typing import Generator, Dict
 
 class RAGService:
     def __init__(self, data_dir: str = "./data"):
-        self.ingest_component = SimpleIngestComponent(persist_dir=data_dir)
+        self.ingest_component = IngestComponent(persist_dir=data_dir)
         # self.model = "llama3.1:8b"
         # self.model = "llama3.2:1b"
         self.model = "qwen2.5:0.5b"
