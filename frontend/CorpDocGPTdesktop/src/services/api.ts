@@ -49,10 +49,54 @@ export const apiService = {
     return response.data;
   },
 
-  // Старый метод chat можно удалить или оставить для совместимости
+  // Это старый метод chat. В нем нет потокового ответа.
   chat: async (message: string): Promise<RAGResponse> => {
     const response = await api.post('/api/rag/query', { question: message });
     return response.data;
+  },
+
+  chatStream: async (question: string, onChunk: (chunk: any) => void): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ question }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Streaming request failed');
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No reader available');
+    }
+
+    const decoder = new TextDecoder();
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              onChunk(data);
+            } catch (e) {
+              console.error('Error parsing chunk:', e);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   },
 
   getStats: async (): Promise<KnowledgeBaseStats> => {

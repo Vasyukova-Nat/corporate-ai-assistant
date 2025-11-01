@@ -6,6 +6,8 @@ import requests
 import os
 import uuid
 from rag_system.rag_service import RAGService
+from fastapi.responses import StreamingResponse
+
 
 app = FastAPI(title="Corporate AI Assistant API")
 
@@ -216,6 +218,28 @@ def should_use_rag(question: str) -> bool:
     ]
     
     return any(keyword in question_lower for keyword in rag_keywords)
+
+@app.post("/api/chat/stream")
+async def chat_stream(request: RAGQueryRequest):
+    """Streaming чат с ассистентом"""
+    async def generate():
+        try:
+            # Получаем streaming ответ от RAG сервиса
+            for chunk in rag_service.query_documents_stream(request.question):
+                yield f"data: {json.dumps(chunk)}\n\n"
+                
+        except Exception as e:
+            error_chunk = {"type": "error", "content": f"Ошибка: {str(e)}"}
+            yield f"data: {json.dumps(error_chunk)}\n\n"
+    
+    return StreamingResponse(
+        generate(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 @app.get("/health")
 async def health_check():
