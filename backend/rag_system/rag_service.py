@@ -65,6 +65,7 @@ class RAGService:
             
         except Exception as e:
             return {"error": str(e), "answer": "Извините, произошла ошибка при поиске в документах"}
+    
     def query_documents_stream(self, question: str) -> Generator[Dict, None, None]:
         """Streaming версия поиска по документам"""
         try:

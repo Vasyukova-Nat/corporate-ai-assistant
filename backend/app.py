@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ import uuid
 from rag_system.rag_service import RAGService
 from fastapi.responses import StreamingResponse
 
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Corporate AI Assistant API")
 
@@ -87,6 +89,7 @@ async def generate_formatted(request: GenerateRequest):
 @app.post("/api/rag/upload")
 async def rag_upload_document(file: UploadFile = File(...)):
     """Загрузка документа в RAG систему (базу знаний компании)"""
+    temp_filename = None
     try:
         allowed_extensions = ['.pdf', '.docx', '.txt', '.md', '.json']
         file_extension = os.path.splitext(file.filename)[1].lower()
@@ -106,12 +109,16 @@ async def rag_upload_document(file: UploadFile = File(...)):
             content = await file.read()
             f.write(content)
         
+        logger.info(f"Starting ingestion of {file.filename}")
         result = rag_service.add_document(temp_filename)
         
+        # Очищаем временный файл ВНЕ зависимости от результата
         try:
-            os.remove(temp_filename)
-        except:
-            pass  
+            if temp_filename and os.path.exists(temp_filename):
+                os.remove(temp_filename)
+                logger.info(f"Cleaned up temporary file: {temp_filename}")
+        except Exception as cleanup_error:
+            logger.warning(f"Could not remove temp file {temp_filename}: {cleanup_error}")
         
         if not result.get("success", False):
             raise HTTPException(status_code=500, detail=result.get("message", "Unknown error"))
@@ -124,8 +131,21 @@ async def rag_upload_document(file: UploadFile = File(...)):
         }
         
     except HTTPException:
+        # Всегда очищаем временный файл даже при исключениях
+        if temp_filename and os.path.exists(temp_filename):
+            try:
+                os.remove(temp_filename)
+            except:
+                pass
         raise
     except Exception as e:
+        # Всегда очищаем временный файл даже при исключениях
+        if temp_filename and os.path.exists(temp_filename):
+            try:
+                os.remove(temp_filename)
+            except:
+                pass
+        logger.error(f"Upload error for {file.filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Upload error: {str(e)}")
 
 @app.post("/api/rag/query")
