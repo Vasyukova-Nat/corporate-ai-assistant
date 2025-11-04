@@ -5,7 +5,7 @@ import { Header } from './components/Layout/Header';
 import { ChatInterface } from './components/Chat/ChatInterface';
 import { DocumentsPage } from './components/Documents/DocumentsPage';
 import { useTheme } from './hooks/useTheme';
-import { ChatHistoryItem } from './types';
+import { ChatHistoryItem, ChatMessage } from './types';
 
 const CHAT_HISTORY_KEY = 'chatHistory';
 
@@ -81,24 +81,48 @@ function App() {
     setCurrentChatId(chatId);
   };
 
-  const updateChatHistory = (chatId: string, newMessage: any, isUser: boolean = false) => {
+  const handleNewMessage = (message: ChatMessage, isUser: boolean = false) => {
     setChatHistory(prev => 
       prev.map(chat => {
-        if (chat.id === chatId) {
-          const updatedMessages = [...chat.messages, newMessage];
+        if (chat.id === currentChatId) {
+          const updatedMessages = [...chat.messages, message];
           
           let updatedTitle = chat.title;
           if (isUser && chat.title === 'Новый чат') {
-            updatedTitle = newMessage.content.slice(0, 30) + (newMessage.content.length > 30 ? '...' : '');
+            updatedTitle = message.content.slice(0, 30) + (message.content.length > 30 ? '...' : '');
           }
 
-          const lastMessage = isUser ? newMessage.content : `Ассистент: ${newMessage.content.slice(0, 50)}...`;
+          const lastMessage = isUser ? message.content : `Ассистент: ${message.content.slice(0, 50)}...`;
 
           return {
             ...chat,
             title: updatedTitle,
             lastMessage,
             timestamp: new Date(),
+            messages: updatedMessages
+          };
+        }
+        return chat;
+      })
+    );
+  };
+
+  const handleUpdateMessage = (messageId: string, updates: Partial<ChatMessage>) => {
+    setChatHistory(prev => 
+      prev.map(chat => {
+        if (chat.id === currentChatId) {
+          const updatedMessages = chat.messages.map(msg => 
+            msg.id === messageId ? { ...msg, ...updates } : msg
+          );
+          
+          const lastMessage = updatedMessages[updatedMessages.length - 1];
+          const updatedLastMessage = lastMessage.role === 'assistant' 
+            ? `Ассистент: ${lastMessage.content.slice(0, 50)}...`
+            : lastMessage.content;
+
+          return {
+            ...chat,
+            lastMessage: updatedLastMessage,
             messages: updatedMessages
           };
         }
@@ -155,7 +179,8 @@ function App() {
               <ChatInterface 
                 chatId={currentChatId}
                 messages={getCurrentChatMessages()}
-                onNewMessage={(message, isUser) => updateChatHistory(currentChatId, message, isUser)}
+                onNewMessage={handleNewMessage}
+                onUpdateMessage={handleUpdateMessage}
               />
             ) : (
               <DocumentsPage />

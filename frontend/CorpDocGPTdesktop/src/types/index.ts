@@ -11,6 +11,14 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   sources?: string[];
+  isStreaming?: boolean;
+}
+
+export interface ChatInterfaceProps {
+  chatId?: string;
+  messages: ChatMessage[];
+  onNewMessage: (message: ChatMessage, isUser: boolean) => void;
+  onUpdateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
 }
 
 export interface ChatHistoryItem {

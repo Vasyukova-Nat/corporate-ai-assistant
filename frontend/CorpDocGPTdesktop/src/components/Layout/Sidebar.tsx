@@ -250,7 +250,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </List>
       </Box>
 
-      {/* Меню навигации и авторство */}
+      {/* Меню навигации */}
       <Box>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)' }} />
         
@@ -290,9 +290,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {item.icon}
               </ListItemIcon>
               <ListItemText 
-                primary={item.label} 
-                primaryTypographyProps={{
-                  fontSize: '0.9rem'
+                primary={item.label}
+                sx={{
+                  '& .MuiListItemText-primary': {
+                    fontSize: '0.9rem'
+                  }
                 }}
               />
             </ListItemButton>
@@ -303,10 +305,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         
         <Box sx={{ p: 2 }}>
           <Typography variant="caption" display="block" fontSize="0.7rem" color="rgba(255,255,255,0.8)">
-            Ситникова Дарья, БВТ2303
+            Васюкова Наталья, БВТ2303
           </Typography>
           <Typography variant="caption" display="block" fontSize="0.7rem" color="rgba(255,255,255,0.8)">
-            Васюкова Наталья, БВТ2303
+            Ситникова Дарья, БВТ2303
           </Typography>
         </Box>
       </Box>

@@ -10,12 +10,14 @@ interface ChatInterfaceProps {
   chatId?: string;
   messages: ChatMessage[];
   onNewMessage: (message: ChatMessage, isUser: boolean) => void;
+  onUpdateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
   chatId, 
   messages, 
-  onNewMessage 
+  onNewMessage,
+  onUpdateMessage 
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,29 +43,64 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setIsLoading(true);
     setError(null);
 
+    // Создаем временное сообщение ассистента для streaming
+    const assistantMessageId = (Date.now() + 1).toString();
+    const tempAssistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+      isStreaming: true,
+    };
+    
+    onNewMessage(tempAssistantMessage, false);
+    let currentContent = '';
+
     try {
-      const response = await apiService.chat(content);
-      
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.answer,
-        timestamp: new Date().toISOString(),
-        sources: response.sources,
-      };
-      
-      onNewMessage(assistantMessage, false);
+      await apiService.chatStream(content, (chunk) => {
+        switch (chunk.type) {
+          case 'sources':
+            // Обновляем существующее сообщение с источниками
+            onUpdateMessage(assistantMessageId, {
+              sources: chunk.sources,
+            });
+            break;
+            
+          case 'content':
+            if (chunk.content) {
+              currentContent += chunk.content;
+              onUpdateMessage(assistantMessageId, {
+                content: currentContent,
+                isStreaming: !chunk.done,
+              });
+            }
+            
+            // Когда streaming завершен
+            if (chunk.done) {
+              onUpdateMessage(assistantMessageId, {
+                content: currentContent,
+                isStreaming: false,
+              });
+            }
+            break;
+            
+          case 'error':
+            setError(chunk.content);
+            onUpdateMessage(assistantMessageId, {
+              content: `Ошибка: ${chunk.content}`,
+              isStreaming: false,
+            });
+            break;
+        }
+      });
     } catch (error) {
-      console.error('API error:', error);
+      console.error('Streaming error:', error);
       setError('Ошибка при отправке сообщения');
       
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Извините, произошла ошибка при обработке запроса. Пожалуйста, проверьте подключение к серверу и попробуйте еще раз.',
-        timestamp: new Date().toISOString(),
-      };
-      onNewMessage(errorMessage, false);
+      onUpdateMessage(assistantMessageId, {
+        content: 'Извините, произошла ошибка. Пожалуйста, попробуйте еще раз.',
+        isStreaming: false,
+      });
     } finally {
       setIsLoading(false);
     }

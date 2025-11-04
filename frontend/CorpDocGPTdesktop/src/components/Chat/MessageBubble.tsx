@@ -13,9 +13,11 @@ import { ChatMessage } from '../../types';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  isLast?: boolean;
+  isLoading?: boolean;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast, isLoading }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isUser = message.role === 'user';
@@ -30,6 +32,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const userAvatarBg = isDark ? theme.palette.common.white : logoColor;
   const userIconColor = isDark ? logoColor : theme.palette.common.white;
   const userTextColor = theme.palette.getContrastText(logoColor);
+
+  // Анимация мигающего курсора для streaming сообщений
+  const streamingCursor = message.isStreaming && (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-block',
+        width: '2px',
+        height: '1em',
+        backgroundColor: isUser ? userTextColor : assistantTextColor,
+        marginLeft: '2px',
+        animation: 'blink 1s infinite',
+        '@keyframes blink': {
+          '0%, 50%': { opacity: 1 },
+          '51%, 100%': { opacity: 0 },
+        },
+      }}
+    />
+  );
 
   return (
     <Box
@@ -98,9 +119,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               lineHeight: 1.45,
               fontSize: '0.95rem',
               color: 'inherit',
+              minHeight: isLoading ? '20px' : 'auto',
             }}
           >
             {message.content}
+            {streamingCursor}
           </Typography>
 
           {message.sources && message.sources.length > 0 && (

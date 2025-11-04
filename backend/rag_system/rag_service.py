@@ -1,10 +1,11 @@
 from typing import Dict
 import ollama
-from .simple_ingest_component import SimpleIngestComponent
+from .ingest_component import IngestComponent
+from typing import Generator, Dict
 
 class RAGService:
     def __init__(self, data_dir: str = "./data"):
-        self.ingest_component = SimpleIngestComponent(persist_dir=data_dir)
+        self.ingest_component = IngestComponent(persist_dir=data_dir)
         # self.model = "llama3.1:8b"
         # self.model = "llama3.2:1b"
         self.model = "qwen2.5:0.5b"
@@ -65,6 +66,67 @@ class RAGService:
         except Exception as e:
             return {"error": str(e), "answer": "Извините, произошла ошибка при поиске в документах"}
     
+    def query_documents_stream(self, question: str) -> Generator[Dict, None, None]:
+        """Streaming версия поиска по документам"""
+        try:
+            relevant_docs = self.ingest_component.query(question)
+            context = "\n\n".join([doc.text for doc in relevant_docs[:3]])
+            
+            if context:
+                prompt = f"""Ты корпоративный AI-ассистент. Используй предоставленную информацию из базы знаний компании для ответа на вопрос.
+                
+                КОНТЕКСТ ИЗ БАЗЫ ЗНАНИЙ КОМПАНИИ:
+                {context}
+
+                ВОПРОС ПОЛЬЗОВАТЕЛЯ:
+                {question}
+
+                ОТВЕТ (будь точным и используй только информацию из контекста):"""
+            else:
+                prompt = f"""Ты корпоративный AI-ассистент. Ответь на вопрос на основе твоих общих знаний о бизнес-процессах.
+
+                ВОПРОС: {question}
+
+                ОТВЕТ:"""
+            
+            # Streaming генерация через Ollama
+            stream = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+                options={'temperature': 0.3}
+            )
+            
+            # Отправляем информацию об источниках сначала
+            yield {
+                "type": "sources", 
+                "sources": [doc.metadata.get('file_name', 'Unknown') for doc in relevant_docs[:3]],
+                "sources_count": len(relevant_docs)
+            }
+            
+            # Затем streaming ответ
+            full_response = ""
+            for chunk in stream:
+                if 'message' in chunk and 'content' in chunk['message']:
+                    content = chunk['message']['content']
+                    full_response += content
+                    yield {
+                        "type": "content", 
+                        "content": content,
+                        "done": False
+                    }
+            
+            # Финальный chunk
+            yield {
+                "type": "content",
+                "content": "",
+                "done": True,
+                "full_response": full_response
+            }
+            
+        except Exception as e:
+            yield {"type": "error", "content": f"Ошибка: {str(e)}"}
+
     def get_knowledge_base_stats(self) -> Dict:
         """Получить статистику базы знаний"""
         return self.ingest_component.get_stats()
