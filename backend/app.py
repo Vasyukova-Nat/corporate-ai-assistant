@@ -86,6 +86,8 @@ async def generate_formatted(request: GenerateRequest):
     
     return {"response": formatted_response}
 
+# ==================== RAG ====================
+
 @app.post("/api/rag/upload")
 async def rag_upload_document(file: UploadFile = File(...)):
     """Загрузка документа в RAG систему (базу знаний компании)"""
@@ -173,6 +175,28 @@ async def rag_query(request: RAGQueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query error: {str(e)}")
 
+@app.post("/api/rag/query/stream")
+async def rag_query_stream(request: RAGQueryRequest):
+    """Streaming запрос к базе знаний компании"""
+    async def generate():
+        try:
+            # Получаем streaming ответ от RAG сервиса
+            for chunk in rag_service.query_documents_stream(request.question):
+                yield f"data: {json.dumps(chunk)}\n\n"
+                
+        except Exception as e:
+            error_chunk = {"type": "error", "content": f"Ошибка: {str(e)}"}
+            yield f"data: {json.dumps(error_chunk)}\n\n"
+    
+    return StreamingResponse(
+        generate(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
 @app.get("/api/rag/stats")
 async def rag_stats():
     """Статистика базы знаний компании"""
@@ -185,7 +209,9 @@ async def rag_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Stats error: {str(e)}")
 
-@app.post("/api/chat")
+# ==================== CHAT ====================
+
+@app.post("/api/chat") # Сейчас не используется
 async def chat_with_assistant(request: RAGQueryRequest):
     """Умный чат с ассистентом (использует базу знаний когда возможно)"""
     try:
@@ -208,7 +234,7 @@ async def chat_with_assistant(request: RAGQueryRequest):
         response = requests.post(
             "http://localhost:11434/api/generate",
             json={
-                "model": "llama3.1:8b",
+                "model": "qwen2.5:0.5b",
                 "prompt": f"Ты корпоративный AI-ассистент. Ответь на вопрос: {request.question}",
                 "stream": False
             }
@@ -224,22 +250,8 @@ async def chat_with_assistant(request: RAGQueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
-def should_use_rag(question: str) -> bool:
-    """Определяет, стоит ли использовать RAG для данного вопроса"""
-    question_lower = question.lower()
-    
-    # Ключевые слова, которые указывают на вопросы о процессах компании
-    rag_keywords = [
-        'как оформить', 'процедура', 'инструкция', 'документ', 'шаблон',
-        'регламент', 'политика', 'правила', 'требования', 'стандарт',
-        'компании', 'организации', 'корпоративный', 'внутренний',
-        'командировка', 'отпуск', 'увольнение', 'прием', 'договор',
-        'отчет', 'заявка', 'согласование', 'подписание'
-    ]
-    
-    return any(keyword in question_lower for keyword in rag_keywords)
 
-@app.post("/api/chat/stream")
+@app.post("/api/chat/stream") # Сейчас не используется
 async def chat_stream(request: RAGQueryRequest):
     """Streaming чат с ассистентом"""
     async def generate():
@@ -260,6 +272,8 @@ async def chat_stream(request: RAGQueryRequest):
             "Connection": "keep-alive",
         }
     )
+
+# ==================== HEALTH & UTILS ====================
 
 @app.get("/health")
 async def health_check():
@@ -284,6 +298,21 @@ async def health_check():
             "status": "unhealthy",
             "error": str(e)
         }
+
+def should_use_rag(question: str) -> bool:
+    """Определяет, стоит ли использовать RAG для данного вопроса"""
+    question_lower = question.lower()
+    
+    # Ключевые слова, которые указывают на вопросы о процессах компании
+    rag_keywords = [
+        'как оформить', 'процедура', 'инструкция', 'документ', 'шаблон',
+        'регламент', 'политика', 'правила', 'требования', 'стандарт',
+        'компании', 'организации', 'корпоративный', 'внутренний',
+        'командировка', 'отпуск', 'увольнение', 'прием', 'договор',
+        'отчет', 'заявка', 'согласование', 'подписание'
+    ]
+    
+    return any(keyword in question_lower for keyword in rag_keywords)
 
 if __name__ == "__main__":
     import uvicorn

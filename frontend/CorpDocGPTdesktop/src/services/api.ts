@@ -43,20 +43,14 @@ export const apiService = {
     await api.delete(`/api/rag/documents/${documentId}`);
   },
 
-  // Этот метод теперь используется для чата
   queryDocuments: async (question: string): Promise<RAGResponse> => {
     const response = await api.post('/api/rag/query', { question });
     return response.data;
   },
 
-  // Это старый метод chat. В нем нет потокового ответа.
-  chat: async (message: string): Promise<RAGResponse> => {
-    const response = await api.post('/api/rag/query', { question: message });
-    return response.data;
-  },
-
-  chatStream: async (question: string, onChunk: (chunk: any) => void): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+  // заменили chatStream на queryDocumentsStream
+  queryDocumentsStream: async (question: string, onChunk: (chunk: any) => void): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/rag/query/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,6 +91,11 @@ export const apiService = {
     } finally {
       reader.releaseLock();
     }
+  },
+
+  chat: async (message: string): Promise<RAGResponse> => {
+    const response = await api.post('/api/chat', { question: message });
+    return response.data;
   },
 
   getStats: async (): Promise<KnowledgeBaseStats> => {
