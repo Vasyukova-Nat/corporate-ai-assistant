@@ -69,8 +69,12 @@ class RAGService:
     def query_documents_stream(self, question: str) -> Generator[Dict, None, None]:
         """Streaming версия поиска по документам"""
         try:
+            print("Вопрос: ", question, " \n")
             relevant_docs = self.ingest_component.query(question)
             context = "\n\n".join([doc.text for doc in relevant_docs[:3]])
+            context1 = relevant_docs[0].text
+            context2 = relevant_docs[1].text
+            context3 = relevant_docs[2].text
             
             if not context:
                 # Нет документов - сразу возвращаем сообщение об отсутствии информации
@@ -98,6 +102,10 @@ class RAGService:
             Отвечай на основе информации выше. Если информации для ответа нет - скажи "нет информации". 
 
             ОТВЕТ:"""
+
+            print("Контекст 1: \n", context1, "\n")
+            print("Контекст 2: \n", context2, "\n")
+            print("Контекст 3: \n", context3)
             
             # Streaming генерация через Ollama
             stream = ollama.chat(
