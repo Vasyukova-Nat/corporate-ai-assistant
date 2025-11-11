@@ -65,7 +65,9 @@ class IngestionHelper:
         """Загружает файл в документы"""
         extension = Path(file_name).suffix.lower()
         
-        if extension in ['.txt', '.md']:
+        if extension == '.pdf':
+            return self._read_pdf(file_data, file_name)
+        elif extension in ['.txt', '.md']:
             # Для текстовых файлов используем простое чтение
             return self._read_as_text(file_data, file_name)
         elif extension == '.json':
@@ -74,6 +76,50 @@ class IngestionHelper:
         else:
             logger.warning("Unsupported extension %s, using text reader", extension)
             return self._read_as_text(file_data, file_name)
+
+    def _read_pdf(self, file_data: Path, file_name: str) -> List[Document]:
+        try:
+            from llama_index.readers.file.docs import PDFReader
+            
+            pdf_reader = PDFReader()
+            documents = pdf_reader.load_data(file_data)
+            
+            # Создаем новые документы с очищенным текстом вместо изменения существующих
+            cleaned_documents = []
+            for doc in documents:
+                cleaned_text = self._clean_text(doc.text)
+                # Создаем новый документ с очищенным текстом
+                new_doc = Document(
+                    text=cleaned_text,
+                    metadata=doc.metadata.copy(),
+                    id_=doc.id_,
+                    embedding=doc.embedding,
+                    excluded_embed_metadata_keys=doc.excluded_embed_metadata_keys,
+                    excluded_llm_metadata_keys=doc.excluded_llm_metadata_keys
+                )
+                cleaned_documents.append(new_doc)
+                
+            logger.info("PDF reader processed %s with %s documents", file_name, len(cleaned_documents))
+            return cleaned_documents
+            
+        except ImportError as e:
+            logger.error("PDFReader not available, falling back to text: %s", e)
+            return self._read_as_text(file_data, file_name)
+        except Exception as e:
+            logger.error("PDF reading failed for %s: %s", file_name, e)
+            return self._read_as_text(file_data, file_name)
+
+    def _clean_text(self, text: str) -> str:
+        """Очищает текст от лишних пробелов и артефактов"""
+        import re
+        text = re.sub(r'\n+', '\n', text)
+        text = re.sub(r' +', ' ', text)
+        text = re.sub(r'-\n', '', text)
+        text = text.strip()
+        
+        if len(text) < 20:  # фильтруем слишком короткие тексты
+            return ""
+        return text
 
     def _read_as_text(self, file_data: Path, file_name: str) -> List[Document]:
         """Читает файл как простой текст"""
