@@ -13,8 +13,7 @@ interface ChatInterfaceProps {
   onUpdateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
-  chatId, 
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({  
   messages, 
   onNewMessage,
   onUpdateMessage 
