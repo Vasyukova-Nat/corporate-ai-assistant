@@ -19,14 +19,7 @@ class IngestComponent:
         self.persist_dir.mkdir(parents=True, exist_ok=True)
         self.max_retries = max_retries
         
-        try:
-            self.embed_model = HuggingFaceEmbedding(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
-            )
-        except Exception as e:
-            logger.warning("Failed to load embedding model, using fallback: %s", e)
-            from llama_index.embeddings.mock import MockEmbedding
-            self.embed_model = MockEmbedding(embed_dim=384)
+        self.ingestion_helper = IngestionHelper()
         
         self.vector_store = self._initialize_vector_store()
         self.storage_context = StorageContext.from_defaults(
@@ -55,7 +48,7 @@ class IngestComponent:
                 # Пытаемся загрузить существующий индекс
                 index = VectorStoreIndex.from_vector_store(
                     vector_store=self.vector_store,
-                    embed_model=self.embed_model,
+                    embed_model=self.ingestion_helper.embed_model,
                     storage_context=self.storage_context
                 )
                 logger.info("Loaded existing vector store index")
@@ -67,7 +60,7 @@ class IngestComponent:
                     index = VectorStoreIndex.from_documents(
                         [],
                         storage_context=self.storage_context,
-                        embed_model=self.embed_model
+                        embed_model=self.ingestion_helper.embed_model
                     )
                     index.storage_context.persist(persist_dir=self.persist_dir)
                     return index
@@ -75,7 +68,7 @@ class IngestComponent:
                 time.sleep(1)
     
     def ingest_file(self, file_path: str) -> bool:
-        """Добавляет файл в базу знаний с retry логикой"""
+        """Добавляет файл в базу знаний с семантическим разбиением"""
         file_path = Path(file_path)
         if not file_path.exists():
             logger.error("File not found: %s", file_path)
@@ -83,7 +76,7 @@ class IngestComponent:
         
         for attempt in range(self.max_retries):
             try:
-                documents = IngestionHelper.transform_file_into_documents(
+                documents = self.ingestion_helper.transform_file_into_documents(
                     file_path.name, file_path
                 )
                 
@@ -91,13 +84,16 @@ class IngestComponent:
                     logger.warning("No documents extracted from %s", file_path)
                     return False
                 
+                logger.info("Ingesting %s semantic documents from %s", len(documents), file_path)
+                
                 # Вставляем документы в индекс
                 for document in documents:
                     self.index.insert(document)
                 
                 # Сохраняем изменения
                 self.index.storage_context.persist(persist_dir=self.persist_dir)
-                logger.info("Successfully ingested %s with %s documents", file_path, len(documents))
+                logger.info("Successfully ingested %s with %s semantic documents", 
+                           file_path, len(documents))
                 return True
                 
             except Exception as e:
@@ -105,7 +101,7 @@ class IngestComponent:
                 if attempt == self.max_retries - 1:
                     logger.error("All ingestion attempts failed for %s", file_path)
                     return False
-                time.sleep(2 ** attempt)  
+                time.sleep(2 ** attempt)
     
     def query(self, question: str, top_k: int = 5) -> List[Document]:
         """Ищет релевантные документы для вопроса"""
@@ -120,6 +116,13 @@ class IngestComponent:
                 found_documents = [doc.node for doc in relevant_docs]
                 
                 logger.debug("Query '%s' found %s documents", question, len(found_documents))
+                
+                # Логируем найденные документы для отладки
+                for i, doc in enumerate(found_documents):
+                    logger.debug("Doc %d: %s (similarity: %.4f)", 
+                                i, doc.metadata.get('file_name', 'Unknown'), 
+                                relevant_docs[i].score if hasattr(relevant_docs[i], 'score') else 0)
+                
                 return found_documents
                 
             except Exception as e:
@@ -137,10 +140,11 @@ class IngestComponent:
             return {
                 "document_count": count,
                 "vector_store": "ChromaDB",
-                "embedding_model": "all-MiniLM-L6-v2",
+                "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
                 "persist_dir": str(self.persist_dir),
                 "status": "active",
-                "retry_config": f"{self.max_retries} attempts"
+                "retry_config": f"{self.max_retries} attempts",
+                "splitter": "semantic"
             }
         except Exception as e:
             logger.error("Error getting stats: %s", e)
@@ -162,7 +166,8 @@ class IngestComponent:
                 "components": {
                     "index": "healthy" if index_ok else "error",
                     "vector_store": "healthy" if store_ok else "error",
-                    "embedding_model": "healthy"
+                    "embedding_model": "healthy",
+                    "semantic_splitter": "healthy"
                 },
                 "statistics": stats
             }

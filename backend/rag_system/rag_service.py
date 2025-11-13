@@ -31,9 +31,9 @@ class RAGService:
             
             if context:
                 prompt = f"""
-                Ты корпоративный AI-ассистент. Используй предоставленную информацию из базы знаний компании для ответа на вопрос.
+                Ты корпоративный AI-ассистент МТУСИ. Используй предоставленную информацию из базы знаний университета для ответа на вопрос.
 
-                КОНТЕКСТ ИЗ БАЗЫ ЗНАНИЙ КОМПАНИИ:
+                КОНТЕКСТ ИЗ БАЗЫ ЗНАНИЙ МТУСИ:
                 {context}
 
                 ВОПРОС ПОЛЬЗОВАТЕЛЯ:
@@ -43,7 +43,7 @@ class RAGService:
                 """
             else:
                 prompt = f"""
-                Ты корпоративный AI-ассистент. Ответь на вопрос на основе твоих общих знаний о бизнес-процессах.
+                Ты корпоративный AI-ассистент МТУСИ. Ответь на вопрос на основе твоих общих знаний о процессах университета.
 
                 ВОПРОС: {question}
 
@@ -69,39 +69,58 @@ class RAGService:
     def query_documents_stream(self, question: str) -> Generator[Dict, None, None]:
         """Streaming версия поиска по документам"""
         try:
+            print("Вопрос: ", question, " \n")
             relevant_docs = self.ingest_component.query(question)
             context = "\n\n".join([doc.text for doc in relevant_docs[:3]])
+            context1 = relevant_docs[0].text
+            context2 = relevant_docs[1].text
+            context3 = relevant_docs[2].text
             
-            if context:
-                prompt = f"""Ты корпоративный AI-ассистент. Используй предоставленную информацию из базы знаний компании для ответа на вопрос.
-                
-                КОНТЕКСТ ИЗ БАЗЫ ЗНАНИЙ КОМПАНИИ:
-                {context}
+            if not context:
+                # Нет документов - сразу возвращаем сообщение об отсутствии информации
+                yield {
+                    "type": "sources", 
+                    "sources": [],
+                    "sources_count": 0,
+                    "has_sources": False
+                }
+                yield {
+                    "type": "content", 
+                    "content": "В базе знаний МТУСИ нет информации по данному вопросу.",
+                    "done": True
+                }
+                return
+            
+            
+            prompt = f"""Ты корпоративный AI-ассистент МТУСИ. 
 
-                ВОПРОС ПОЛЬЗОВАТЕЛЯ:
-                {question}
+            ИНФОРМАЦИЯ ИЗ БАЗЫ ЗНАНИЙ:
+            {context}
 
-                ОТВЕТ (будь точным и используй только информацию из контекста):"""
-            else:
-                prompt = f"""Ты корпоративный AI-ассистент. Ответь на вопрос на основе твоих общих знаний о бизнес-процессах.
+            ВОПРОС: {question}
 
-                ВОПРОС: {question}
+            Отвечай ТОЛЬКО на основе информации из базы знаний. 
 
-                ОТВЕТ:"""
+            ОТВЕТ:"""
+
+            print("Контекст 1: \n", context1, "\n")
+            print("Контекст 2: \n", context2, "\n")
+            print("Контекст 3: \n", context3)
             
             # Streaming генерация через Ollama
             stream = ollama.chat(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 stream=True,
-                options={'temperature': 0.3}
+                options={'temperature': 0.1, 'num_predict': 400}
             )
             
             # Отправляем информацию об источниках сначала
             yield {
                 "type": "sources", 
                 "sources": [doc.metadata.get('file_name', 'Unknown') for doc in relevant_docs[:3]],
-                "sources_count": len(relevant_docs)
+                "sources_count": len(relevant_docs),
+                "has_sources": True
             }
             
             # Затем streaming ответ

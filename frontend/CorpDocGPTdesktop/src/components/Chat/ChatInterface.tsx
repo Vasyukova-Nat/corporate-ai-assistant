@@ -13,8 +13,7 @@ interface ChatInterfaceProps {
   onUpdateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
-  chatId, 
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({  
   messages, 
   onNewMessage,
   onUpdateMessage 
@@ -57,7 +56,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     let currentContent = '';
 
     try {
-      await apiService.chatStream(content, (chunk) => {
+      await apiService.queryDocumentsStream(content, (chunk) => {
         switch (chunk.type) {
           case 'sources':
             // Обновляем существующее сообщение с источниками
@@ -129,7 +128,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <Box sx={{ mt: 6, width: '100%', maxWidth: 800 }}>
               <ChatInput 
                 onSendMessage={handleSendMessage}
-                placeholder="Задайте вопрос о документах университета, учебном процессе или расписании..."
+                placeholder="Задайте вопрос о документах университета, учебном процессе или регламентах..."
               />
             </Box>
           </Box>

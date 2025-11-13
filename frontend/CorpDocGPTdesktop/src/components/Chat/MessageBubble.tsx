@@ -17,7 +17,7 @@ interface MessageBubbleProps {
   isLoading?: boolean;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLast, isLoading }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLoading }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const isUser = message.role === 'user';
